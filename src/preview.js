@@ -45,6 +45,8 @@ function previewBridge(channel) {
 
   // Preserve unchanged DOM nodes, especially loaded images. Replacing the entire
   // body would discard their intrinsic sizes and could shift the page after paint.
+  let preserveInteractiveState = false;
+  const keepStateAttribute = (node, name) => preserveInteractiveState && ((node.nodeName === 'DETAILS' && name === 'open') || (node.nodeName === 'INPUT' && name === 'checked'));
   const reconcileChildren = (current, next) => {
     let index = 0;
     for (const incoming of [...next.childNodes]) {
@@ -54,11 +56,14 @@ function previewBridge(channel) {
         existing.replaceWith(document.importNode(incoming, true));
       } else if (existing.nodeType === Node.ELEMENT_NODE) {
         for (const attribute of [...existing.attributes]) {
+          if (keepStateAttribute(existing, attribute.name)) continue;
           if (!incoming.hasAttribute(attribute.name)) existing.removeAttribute(attribute.name);
         }
         for (const attribute of [...incoming.attributes]) {
+          if (keepStateAttribute(existing, attribute.name)) continue;
           if (existing.getAttribute(attribute.name) !== attribute.value) existing.setAttribute(attribute.name, attribute.value);
         }
+        if (!preserveInteractiveState && existing.nodeName === 'INPUT') existing.checked = incoming.checked;
         reconcileChildren(existing, incoming);
       } else if (existing.nodeValue !== incoming.nodeValue) existing.nodeValue = incoming.nodeValue;
       index += 1;
@@ -83,6 +88,13 @@ function previewBridge(channel) {
       if (documentStyles[index].textContent !== style.textContent) documentStyles[index].textContent = style.textContent;
     });
     while (documentStyles.length > nextStyles.length) documentStyles.pop().remove();
+    for (const attribute of [...document.body.attributes]) {
+      if (!next.body.hasAttribute(attribute.name)) document.body.removeAttribute(attribute.name);
+    }
+    for (const attribute of [...next.body.attributes]) {
+      if (document.body.getAttribute(attribute.name) !== attribute.value) document.body.setAttribute(attribute.name, attribute.value);
+    }
+    preserveInteractiveState = !event.data.resetScroll;
     reconcileChildren(document.body, next.body);
     document.title = next.title;
     selectedPath = event.data.selectedPath;
@@ -90,6 +102,14 @@ function previewBridge(channel) {
     window.scrollTo({ ...position, behavior: 'instant' });
   });
   document.addEventListener('click', event => {
+    const interaction = event.target.closest('[data-preview-interaction]');
+    if (interaction) {
+      if (interaction.tagName === 'A' && interaction.getAttribute('href')?.startsWith('#')) {
+        event.preventDefault();
+        document.getElementById(interaction.getAttribute('href').slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      }
+      return;
+    }
     // Preview links never navigate away from the editor's isolated document.
     if (event.target.closest('a')) event.preventDefault();
     const element = event.target.closest('[data-element-path]');

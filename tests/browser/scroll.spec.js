@@ -13,7 +13,7 @@ async function openLongPage(page, withImage = false) {
       accent: '#426451', background: '#f5f2eb', pages: [{ id: 'home', name: 'Home', sections }],
     }));
   }, withImage);
-  await page.goto('/');
+  await page.goto('/#/builder');
   await expect(page.frameLocator('#preview').getByRole('heading', { name: 'A longer page, chapter 12', exact: true })).toBeAttached();
 }
 

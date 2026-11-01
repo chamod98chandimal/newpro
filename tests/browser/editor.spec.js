@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 test('edit, save, reload, add sections, switch previews, and export', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/builder');
   await expect(page.frameLocator('#preview').getByRole('heading', { level: 1 })).toContainText('Good things');
   await page.getByLabel('Heading', { exact: true }).fill('A website of my own.');
   await expect(page.frameLocator('#preview').getByRole('heading', { level: 1 })).toHaveText('A website of my own.');
@@ -16,7 +16,7 @@ test('edit, save, reload, add sections, switch previews, and export', async ({ p
   expect((await project).suggestedFilename()).toBe('folio-project.json');
 });
 test('create a page, edit styles, and apply a template', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/builder');
   page.once('dialog', d => d.accept('About us'));
   await page.getByRole('button', { name: 'Add page', exact: true }).click();
   await expect(page.getByLabel('Page name')).toHaveValue('About us');
@@ -30,7 +30,7 @@ test('create a page, edit styles, and apply a template', async ({ page }) => {
   await expect(page.getByText('COMING LATER')).toBeVisible();
 });
 test('import rejects malformed files and restores a valid backup', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/builder');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.locator('#import-file').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"version":1}') });
   await expect(page.locator('#toast')).toContainText('Could not import');
@@ -45,7 +45,7 @@ test('import rejects malformed files and restores a valid backup', async ({ page
 });
 test('section ordering, deletion, and narrow editor layout', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/builder');
   await page.getByRole('button', { name: '↓ Move down' }).click();
   await expect(page.locator('.section-row').nth(1)).toHaveClass(/chosen/);
   page.once('dialog', d => d.accept());

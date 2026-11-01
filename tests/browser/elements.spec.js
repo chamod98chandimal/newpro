@@ -8,10 +8,10 @@ async function insert(page, type) {
 const project = page => page.evaluate(() => JSON.parse(localStorage.getItem('folio.project.v1')));
 
 test('element library search, column building, preview selection, and export round trip', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/builder');
   await page.getByRole('button', { name: '+ Browse elements', exact: true }).click();
-  await expect(page.locator('[data-insert]:visible')).toHaveCount(10);
-  await page.getByLabel('Search elements').fill('photo');
+  await expect(page.locator('[data-insert]:visible')).toHaveCount(25);
+  await page.getByLabel('Search elements').fill('photo with a description');
   await expect(page.locator('[data-insert]:visible')).toHaveCount(1);
   await expect(page.locator('[data-insert="image"]')).toBeVisible();
   await page.getByLabel('Search elements').fill('');
@@ -43,7 +43,7 @@ test('element library search, column building, preview selection, and export rou
 });
 
 test('image, button, banner, spacer, and duplicate controls work', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/builder');
   // Serve an image locally so the test does not depend on an external image host.
   await page.route('https://images.example.test/photo.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="200" height="100" fill="green"/></svg>' }));
   await insert(page, 'image');
@@ -68,7 +68,7 @@ test('image, button, banner, spacer, and duplicate controls work', async ({ page
 
 test('drag elements between columns and reorder page elements', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.goto('/');
+  await page.goto('/#/builder');
   await insert(page, 'row');
   await page.locator('[data-element="1.0.0"]').dragTo(page.locator('[data-column="1.1"] > .column-add'));
   let state = await project(page);

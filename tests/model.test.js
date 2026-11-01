@@ -85,3 +85,44 @@ test('images reserve layout space and load eagerly only in the editor', () => {
   assert.ok(preview.includes('loading="eager"'));
   assert.ok(exported.includes('aspect-ratio:16/9;object-fit:contain'));
 });
+
+test('rich element items validate and interactive exports work without scripts', () => {
+  const site = createSite();
+  site.pages[0].sections = ['slider', 'gallery', 'accordion', 'tabs', 'pricing', 'productGrid', 'social'].map(createElement);
+  validateSite(site);
+  const html = renderDocument(site, site.pages[0]);
+  assert.ok(html.includes('<details open>'));
+  assert.ok(html.includes('type="radio"'));
+  assert.ok(html.includes('aria-label="Next slide"'));
+  assert.ok(html.includes('href="#ux-0-slide-1"'));
+  assert.ok(html.includes('ux-products'));
+  assert.ok(!html.includes('<script'));
+  site.pages[0].sections[0].items = Array.from({ length: 13 }, () => ({ title: 'Too many' }));
+  assert.throws(() => validateSite(site), /12 items/);
+  site.pages[0].sections[0].items = [{ title: 42 }];
+  assert.throws(() => validateSite(site), /item content/);
+});
+
+test('rich component item content is escaped and link schemes are filtered', () => {
+  const site = createSite(); const pricing = createElement('pricing');
+  pricing.items = [{ title: '<script>alert(1)</script>', price: '<img src=x>', body: '<b>Not markup</b>', button: '" onclick="alert(1)', url: 'javascript:alert(1)' }];
+  site.pages[0].sections = [pricing];
+  const html = renderDocument(site, site.pages[0]);
+  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(html.includes('&lt;img src=x&gt;'));
+  assert.ok(!html.includes('<script'));
+  assert.ok(!html.includes('javascript:'));
+  assert.ok(html.includes('href="#"'));
+});
+
+test('video embeds accept only known secure providers', async () => {
+  const { safeVideoURL } = await import('../src/model.js');
+  assert.equal(safeVideoURL('https://www.youtube.com/watch?v=abcdefghijk'), 'https://www.youtube-nocookie.com/embed/abcdefghijk?rel=0');
+  assert.equal(safeVideoURL('https://youtu.be/abcdefghijk'), 'https://www.youtube-nocookie.com/embed/abcdefghijk?rel=0');
+  assert.equal(safeVideoURL('https://vimeo.com/123456789'), 'https://player.vimeo.com/video/123456789');
+  for (const url of ['javascript:alert(1)', 'http://www.youtube.com/watch?v=abcdefghijk', 'https://evil.example/embed/abcdefghijk', 'https://youtube.com.evil.example/watch?v=abcdefghijk', 'https://name:password@youtube.com/watch?v=abcdefghijk']) assert.equal(safeVideoURL(url), '');
+  const site = createSite(); const video = createElement('video');video.url = 'https://evil.example/embed/test';site.pages[0].sections = [video];
+  assert.ok(!renderDocument(site, site.pages[0]).includes('<iframe'));
+  video.url = 'https://youtu.be/abcdefghijk';
+  assert.ok(renderDocument(site, site.pages[0]).includes('sandbox="allow-scripts allow-same-origin allow-presentation"'));
+});
